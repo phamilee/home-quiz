@@ -12,17 +12,17 @@ export default function ThankYou() {
         Your responses have been recorded. Thank you for contributing to our research
         on sustainable housing solutions.
       </Description>
-      <ButtonContainer>
+      {/* <ButtonContainer>
         <ViewResultsButton onClick={() => navigate('/quiz/results')}>
           View Results
         </ViewResultsButton>
-      </ButtonContainer>
+      </ButtonContainer> */}
     </ThankYouContainer>
   );
 }
 
 const ThankYouContainer = styled.div`
-  width: 80%;
+  width: 95%;
   max-width: 600px;
   background: #000;
   border: 4px solid #fff;

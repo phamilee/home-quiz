@@ -154,18 +154,10 @@ export default function BaseQuestion({
   );
 }
 
-const SurveyContainer = styled.div`
-  width: 80%;
-  max-width: 600px;
-  background: #000;
-  border: 4px solid #fff;
-  padding: 20px;
-  text-align: center;
-`;
+const SurveyContainer = styled.div.attrs({ className: 'question-container' })``;
 
 const QuestionText = styled.h2`
-  margin-bottom: 30px;
-  line-height: 1.5;
+  text-align: center;
 `;
 
 const OptionsContainer = styled.div`
@@ -190,12 +182,9 @@ const Button = styled.button`
 const SkipButton = styled.button`
   width: auto;
   margin: 20px auto 0;
-  padding: 8px 16px;
   background: transparent;
   border: 1px solid #666;
   color: #666;
-  font-size: 0.9em;
-  cursor: pointer;
   
   &:hover {
     border-color: #fff;
@@ -210,33 +199,6 @@ const NavigationContainer = styled.div`
   margin-top: 20px;
 `;
 
-const BackButton = styled.button`
-  padding: 8px 16px;
-  background: transparent;
-  border: 2px solid #fff;
-  color: #fff;
-  cursor: pointer;
-  
-  &:hover {
-    background: #333;
-  }
-`;
+const BackButton = styled.button.attrs({ className: 'back-button' })``;
 
-const NextButton = styled.button`
-  padding: 8px 16px;
-  background: transparent;
-  border: 2px solid #0f0;
-  color: #0f0;
-  cursor: pointer;
-  
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    border-color: #666;
-    color: #666;
-  }
-  
-  &:hover:not(:disabled) {
-    background: #0f01;
-  }
-`; 
+const NextButton = styled.button.attrs({ className: 'next-button' })``; 
