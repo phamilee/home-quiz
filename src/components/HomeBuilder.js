@@ -23,11 +23,11 @@ const INITIAL_POINTS = {
 };
 
 const stats = [
-  { name: 'Size', key: 'size' },
   { name: 'Location', key: 'loc' },
   { name: 'Vibe', key: 'vibe' },
-  { name: 'Impact (Environmental)', key: 'sust' },
-  { name: 'Durability', key: 'dur' }
+  { name: 'Size', key: 'size' },
+  { name: 'Durability', key: 'dur' },
+  { name: 'Impact (Environmental)', key: 'sust' }
 ];
 
 function HomeBuilder() {
