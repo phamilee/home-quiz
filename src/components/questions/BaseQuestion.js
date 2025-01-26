@@ -5,23 +5,23 @@ import { supabase } from '../../supabaseClient';
 
 // Get session ID or create one
 const getSessionId = () => {
-  let sessionId = localStorage.getItem('quiz_session_id');
+  let sessionId = localStorage.getItem('survey_session_id');
   if (!sessionId) {
     sessionId = Math.random().toString(36).substring(2, 15);
-    localStorage.setItem('quiz_session_id', sessionId);
+    localStorage.setItem('survey_session_id', sessionId);
   }
   return sessionId;
 };
 
 // Get stored answers for the session
 const getStoredAnswers = () => {
-  const answers = localStorage.getItem('quiz_answers');
+  const answers = localStorage.getItem('survey_answers');
   return answers ? JSON.parse(answers) : {};
 };
 
 // Save answers for the session
 const saveAnswers = (answers) => {
-  localStorage.setItem('quiz_answers', JSON.stringify(answers));
+  localStorage.setItem('survey_answers', JSON.stringify(answers));
 };
 
 export default function BaseQuestion({ 
@@ -78,7 +78,7 @@ export default function BaseQuestion({
       try {
         const sessionId = getSessionId();
         await supabase
-          .from('quiz_responses')
+          .from('survey_responses')
           .upsert({
             session_id: sessionId,
             [field]: answer,
@@ -106,7 +106,7 @@ export default function BaseQuestion({
   if (loading) return <QuestionText>Loading...</QuestionText>;
 
   return (
-    <QuizContainer>
+    <SurveyContainer>
       <QuestionText>{question}</QuestionText>
       
       <OptionsContainer>
@@ -140,11 +140,11 @@ export default function BaseQuestion({
           Next
         </NextButton>
       </NavigationContainer>
-    </QuizContainer>
+    </SurveyContainer>
   );
 }
 
-const QuizContainer = styled.div`
+const SurveyContainer = styled.div`
   width: 80%;
   max-width: 600px;
   background: #000;

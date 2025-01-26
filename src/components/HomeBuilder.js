@@ -5,10 +5,10 @@ import { supabase } from '../supabaseClient';
 
 // Get session ID or create one
 const getSessionId = () => {
-  let sessionId = localStorage.getItem('quiz_session_id');
+  let sessionId = localStorage.getItem('survey_session_id');
   if (!sessionId) {
     sessionId = Math.random().toString(36).substring(2, 15);
-    localStorage.setItem('quiz_session_id', sessionId);
+    localStorage.setItem('survey_session_id', sessionId);
   }
   return sessionId;
 };
@@ -24,7 +24,6 @@ const stats = [
 function HomeBuilder() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [quizId, setQuizId] = useState(null);
   const [points, setPoints] = useState({
     size: 0,
     loc: 0,
@@ -43,18 +42,27 @@ function HomeBuilder() {
 
         const sessionId = getSessionId();
         
-        // First try to get existing quiz
+        // First try to get existing survey
         let { data: existingData, error: selectError } = await supabase
-          .from('quiz_responses')
+          .from('survey_responses')
           .select()
           .eq('session_id', sessionId)
-          .single();
+          .maybeSingle();  // Use maybeSingle instead of single to avoid errors
+          
+        if (selectError) {
+          console.error('Select error:', {
+            code: selectError.code,
+            message: selectError.message,
+            details: selectError.details,
+            hint: selectError.hint
+          });
+          throw selectError;
+        }
           
         if (!mounted) return;
 
         if (existingData) {
-          console.log('Found existing quiz:', existingData);
-          setQuizId(existingData.id);
+          console.log('Found existing survey:', existingData);
           setPoints({
             size: existingData.size || 0,
             loc: existingData.loc || 0,
@@ -64,23 +72,23 @@ function HomeBuilder() {
             dur: existingData.dur || 0
           });
         } else {
-          console.log('Creating new quiz with initial points');
+          console.log('Creating new survey with initial points');
           const initialPoints = {
             session_id: sessionId,
             size: 0,
             loc: 0,
             vibe: 0,
             sust: 10,  // Start at 10
-            sust_offset: 0,  // Match database column name
+            sust_offset: 0,
             dur: 0
           };
 
           console.log('Inserting initial points:', initialPoints);
-          const { data: newQuiz, error: insertError } = await supabase
-            .from('quiz_responses')
+          const { data: newSurvey, error: insertError } = await supabase
+            .from('survey_responses')
             .insert(initialPoints)
             .select()
-            .single();
+            .maybeSingle();  // Use maybeSingle instead of single
             
           if (insertError) {
             console.error('Insert error:', {
@@ -95,8 +103,7 @@ function HomeBuilder() {
 
           if (!mounted) return;
 
-          console.log('New quiz created:', newQuiz);
-          setQuizId(newQuiz.id);
+          console.log('New survey created:', newSurvey);
           setPoints({
             size: 0,
             loc: 0,
@@ -133,7 +140,6 @@ function HomeBuilder() {
   // Track green points (10 total) separately from blue sustainability points
   const totalGreenPoints = points.size + points.loc + points.vibe + points.dur + points.sustOffset;
   const remainingGreenPoints = 10 - totalGreenPoints;
-  const currentSustPoints = points.sust;  // Blue sustainability points
 
   const handleIncrement = (stat) => {
     if (points[stat] < 10) {
@@ -182,7 +188,7 @@ function HomeBuilder() {
         console.log(`Decrementing ${stat}, returning 1 green point and 1 sust:`, newPoints);
         setPoints(newPoints);
       } else if (stat === 'sust' && points.sustOffset > 0) {
-        // Return green point used for sustainability offset
+        // Only remove offset points for sustainability
         const newPoints = {
           ...points,
           sust: points.sust - 1,
@@ -214,44 +220,44 @@ function HomeBuilder() {
       // Calculate totals
       const totalGreenUsed = points.size + points.loc + points.vibe + points.dur + points.sustOffset;
       
-      // Update with the new values
+      // Update with the new values, ensuring field names match database
       const updateData = {
-        session_id: sessionId,
+        session_id: sessionId,  // Include session_id in update
         size: points.size,
         loc: points.loc,
         vibe: points.vibe,
         sust: points.sust,
-        sust_offset: points.sustOffset,
+        sust_offset: points.sustOffset,  // Match the database field name
         dur: points.dur
       };
 
-      console.log('Current state:', {
-        points,
-        totalGreenUsed,
+      console.log('Saving points:', {
+        sessionId,
         updateData,
-        sessionId
+        currentPoints: points  // Log current state for debugging
       });
 
-      // Update using session_id
-      const { data, error } = await supabase
-        .from('quiz_responses')
+      // Try to update first
+      const { data: updateResult, error: updateError } = await supabase
+        .from('survey_responses')
         .update(updateData)
         .eq('session_id', sessionId)
         .select();
 
-      if (error) {
+      if (updateError) {
         console.error('Error updating record:', {
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          sessionId
+          code: updateError.code,
+          message: updateError.message,
+          details: updateError.details,
+          hint: updateError.hint,
+          sessionId,
+          updateData
         });
-        throw error;
+        throw updateError;
       }
 
-      console.log('Update successful:', data);
-      navigate('/quiz/4');
+      console.log('Update successful:', updateResult);
+      navigate('/survey/5');
     } catch (error) {
       console.error('Error saving points:', error);
     }
@@ -262,8 +268,11 @@ function HomeBuilder() {
   return (
     <BuilderContainer>
       <QuestionText>Build your ideal home:</QuestionText>
+      <QuestionSubtext>
+        Use your credits to set your perfect home's priorities.
+      </QuestionSubtext>
       <RemainingPoints>
-        Points Remaining: {remainingGreenPoints}
+        Credits Remaining: {remainingGreenPoints}
       </RemainingPoints>
       
       {stats.map(({ name, key }) => (
@@ -271,7 +280,12 @@ function HomeBuilder() {
           <ControlRow>
             <StatName>{name}</StatName>
             <Controls>
-                <Button onClick={() => handleDecrement(key)}>-</Button>
+                <Button 
+                  onClick={() => handleDecrement(key)}
+                  disabled={key === 'sust' ? points.sustOffset <= 0 : points[key] <= 0}
+                >
+                  -
+                </Button>
                 <Button 
                   onClick={() => handleIncrement(key)}
                   disabled={
@@ -298,7 +312,7 @@ function HomeBuilder() {
       ))}
       
       <NavigationContainer>
-        <BackButton onClick={() => navigate('/quiz/disasters')}>
+        <BackButton onClick={() => navigate('/survey/disasters')}>
           Back
         </BackButton>
         <SubmitButton 
@@ -322,6 +336,12 @@ const BuilderContainer = styled.div`
 
 const QuestionText = styled.h2`
   margin-bottom: 15px;
+  line-height: 1.5;
+  text-align: center;
+`;
+
+const QuestionSubtext = styled.p`
+  margin-bottom: 20px;
   line-height: 1.5;
   text-align: center;
 `;
@@ -381,11 +401,6 @@ const Controls = styled.div`
   align-items: center;
   justify-content: center;
   gap: 10px;
-`;
-
-const StatValue = styled.span`
-  min-width: 30px;
-  text-align: center;
 `;
 
 const Button = styled.button`

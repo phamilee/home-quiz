@@ -12,8 +12,8 @@ export default function Lifespan() {
         "100+ years"
       ]}
       field="lifespan"
-      nextPath="/quiz/demographics"
-      previousPath="/quiz/home-builder"
+      nextPath="/survey/6"
+      previousPath="/survey/4"
     />
   );
 } 
