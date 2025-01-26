@@ -34,9 +34,9 @@ function Scene({ data, xVar, yVar, zVar }) {
   const points = useMemo(() => {
     return data.map(point => ({
       // Map 0-10 to unit grid centered at 5
-      x: (point[xVar] - 5) / 10,  // Now 0->-0.5, 5->0, 10->0.5
-      y: (point[yVar] - 5) / 10,
-      z: -(point[zVar] - 5) / 10,
+      x: (2 * point[xVar] - 5) / 10,  // Now 0->-0.5, 5->0, 10->0.5
+      y: (2 * point[yVar] - 5) / 10,
+      z: -(2 * point[zVar] - 5) / 10,
       color: point.color
     }));
   }, [data, xVar, yVar, zVar]);
