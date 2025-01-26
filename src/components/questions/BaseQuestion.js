@@ -30,19 +30,25 @@ export default function BaseQuestion({
   nextPath, 
   field, 
   previousPath,
-  skipEnabled = false 
+  skipEnabled = false,
+  multiSelect = false 
 }) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [answer, setAnswer] = useState(null);
-  const [savedAnswer, setSavedAnswer] = useState(null);
+  const [answer, setAnswer] = useState(multiSelect ? [] : null);
+  const [savedAnswer, setSavedAnswer] = useState(multiSelect ? [] : null);
 
   useEffect(() => {
     const loadSavedAnswer = () => {
       try {
         const answers = getStoredAnswers();
-        setAnswer(answers[field] || null);
-        setSavedAnswer(answers[field] || null);
+        const savedValue = answers[field] || (multiSelect ? [] : null);
+        // Convert comma-separated string to array if multiSelect
+        const parsedValue = multiSelect && typeof savedValue === 'string' 
+          ? savedValue.split(',').filter(Boolean)
+          : savedValue;
+        setAnswer(parsedValue);
+        setSavedAnswer(parsedValue);
         setLoading(false);
       } catch (error) {
         console.error('Error loading saved answer:', error);
@@ -51,16 +57,28 @@ export default function BaseQuestion({
     };
 
     loadSavedAnswer();
-  }, [field]);
+  }, [field, multiSelect]);
 
   const handleSelect = (selectedAnswer) => {
-    setAnswer(selectedAnswer);
+    if (multiSelect) {
+      setAnswer(prev => {
+        if (prev.includes(selectedAnswer)) {
+          return prev.filter(a => a !== selectedAnswer);
+        } else {
+          return [...prev, selectedAnswer];
+        }
+      });
+    } else {
+      setAnswer(selectedAnswer);
+    }
   };
 
   const handleNext = async () => {
-    if (answer === savedAnswer) {
-      // If answer hasn't changed, just navigate
-      const nextRoute = typeof nextPath === 'function' ? nextPath(answer) : nextPath;
+    const currentAnswer = multiSelect ? answer.join(',') : answer;
+    const currentSavedAnswer = multiSelect ? savedAnswer.join(',') : savedAnswer;
+
+    if (currentAnswer === currentSavedAnswer) {
+      const nextRoute = typeof nextPath === 'function' ? nextPath(currentAnswer) : nextPath;
       navigate(nextRoute);
       return;
     }
@@ -69,34 +87,26 @@ export default function BaseQuestion({
       const answers = getStoredAnswers();
       const newAnswers = {
         ...answers,
-        [field]: answer
+        [field]: currentAnswer
       };
       saveAnswers(newAnswers);
       setSavedAnswer(answer);
       
-      // Try to sync with Supabase if possible
       try {
         const sessionId = getSessionId();
         await supabase
           .from('survey_responses')
           .upsert({
             session_id: sessionId,
-            [field]: answer,
-            size: field === 'size' ? answer : answers.size || 0,
-            loc: field === 'loc' ? answer : answers.loc || 0,
-            vibe: field === 'vibe' ? answer : answers.vibe || 0,
-            sust: field === 'sust' ? answer : answers.sust || 0,
-            dur: field === 'dur' ? answer : answers.dur || 0,
-            sust_offset: answers.sust_offset || 0
+            [field]: currentAnswer
           }, {
             onConflict: 'session_id'
           });
       } catch (error) {
-        // Ignore Supabase errors - we'll rely on localStorage
         console.warn('Failed to sync with Supabase:', error);
       }
       
-      const nextRoute = typeof nextPath === 'function' ? nextPath(answer) : nextPath;
+      const nextRoute = typeof nextPath === 'function' ? nextPath(currentAnswer) : nextPath;
       navigate(nextRoute);
     } catch (error) {
       console.error('Error saving answer:', error);
@@ -114,7 +124,7 @@ export default function BaseQuestion({
           <Button 
             key={option} 
             onClick={() => handleSelect(option)}
-            selected={answer === option}
+            selected={multiSelect ? answer.includes(option) : answer === option}
           >
             {option}
           </Button>
@@ -135,7 +145,7 @@ export default function BaseQuestion({
         )}</div>
         <NextButton 
           onClick={handleNext}
-          disabled={answer === null && !skipEnabled}
+          disabled={(multiSelect ? answer.length === 0 : answer === null) && !skipEnabled}
         >
           Next
         </NextButton>

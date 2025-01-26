@@ -32,6 +32,7 @@ function HomeBuilder() {
     sustOffset: 0,  // Green points spent to offset sustainability loss
     dur: 0
   });
+  const [showTooltip, setShowTooltip] = useState(false);
   
   useEffect(() => {
     let mounted = true;
@@ -62,7 +63,6 @@ function HomeBuilder() {
         if (!mounted) return;
 
         if (existingData) {
-          console.log('Found existing survey:', existingData);
           setPoints({
             size: existingData.size || 0,
             loc: existingData.loc || 0,
@@ -72,7 +72,6 @@ function HomeBuilder() {
             dur: existingData.dur || 0
           });
         } else {
-          console.log('Creating new survey with initial points');
           const initialPoints = {
             session_id: sessionId,
             size: 0,
@@ -83,7 +82,6 @@ function HomeBuilder() {
             dur: 0
           };
 
-          console.log('Inserting initial points:', initialPoints);
           const { data: newSurvey, error: insertError } = await supabase
             .from('survey_responses')
             .insert(initialPoints)
@@ -91,19 +89,11 @@ function HomeBuilder() {
             .maybeSingle();  // Use maybeSingle instead of single
             
           if (insertError) {
-            console.error('Insert error:', {
-              code: insertError.code,
-              message: insertError.message,
-              details: insertError.details,
-              hint: insertError.hint,
-              initialPoints
-            });
             throw insertError;
           }
 
           if (!mounted) return;
 
-          console.log('New survey created:', newSurvey);
           setPoints({
             size: 0,
             loc: 0,
@@ -151,7 +141,6 @@ function HomeBuilder() {
             [stat]: points[stat] + 1,
             sust: points.sust - 1  // Decrease blue sustainability points
           };
-          console.log(`Incrementing ${stat}, using 1 green point and decreasing sust by 1:`, newPoints);
           setPoints(newPoints);
         }
       } else if (stat === 'sust') {
@@ -162,14 +151,12 @@ function HomeBuilder() {
             sust: points.sust + 1,  // Increase blue sustainability points
             sustOffset: points.sustOffset + 1  // Count the green point spent
           };
-          console.log(`Offsetting sust loss with 1 green point:`, newPoints);
           setPoints(newPoints);
         }
       } else {
         // Other stats just use green points
         if (remainingGreenPoints > 0) {
           const newPoints = { ...points, [stat]: points[stat] + 1 };
-          console.log(`Incrementing ${stat}, using 1 green point:`, newPoints);
           setPoints(newPoints);
         }
       }
@@ -185,7 +172,6 @@ function HomeBuilder() {
           [stat]: points[stat] - 1,
           sust: points.sust + 1  // Return blue sustainability point
         };
-        console.log(`Decrementing ${stat}, returning 1 green point and 1 sust:`, newPoints);
         setPoints(newPoints);
       } else if (stat === 'sust' && points.sustOffset > 0) {
         // Only remove offset points for sustainability
@@ -194,12 +180,10 @@ function HomeBuilder() {
           sust: points.sust - 1,
           sustOffset: points.sustOffset - 1
         };
-        console.log(`Removing sust offset, returning 1 green point:`, newPoints);
         setPoints(newPoints);
       } else {
         // Other stats just return green points
         const newPoints = { ...points, [stat]: points[stat] - 1 };
-        console.log(`Decrementing ${stat}, returning 1 green point:`, newPoints);
         setPoints(newPoints);
       }
     }
@@ -210,7 +194,6 @@ function HomeBuilder() {
       // Only validate that points are in valid range
       for (const [key, value] of Object.entries(points)) {
         if (value < 0 || value > 10) {
-          console.error(`Invalid value for ${key}:`, value);
           return;
         }
       }
@@ -231,12 +214,6 @@ function HomeBuilder() {
         dur: points.dur
       };
 
-      console.log('Saving points:', {
-        sessionId,
-        updateData,
-        currentPoints: points  // Log current state for debugging
-      });
-
       // Try to update first
       const { data: updateResult, error: updateError } = await supabase
         .from('survey_responses')
@@ -245,20 +222,12 @@ function HomeBuilder() {
         .select();
 
       if (updateError) {
-        console.error('Error updating record:', {
-          code: updateError.code,
-          message: updateError.message,
-          details: updateError.details,
-          hint: updateError.hint,
-          sessionId,
-          updateData
-        });
         throw updateError;
       }
 
-      console.log('Update successful:', updateResult);
       navigate('/survey/5');
     } catch (error) {
+      // Keep this error log for debugging purposes
       console.error('Error saving points:', error);
     }
   };
@@ -280,12 +249,28 @@ function HomeBuilder() {
           <ControlRow>
             <StatName>{name}</StatName>
             <Controls>
-                <Button 
-                  onClick={() => handleDecrement(key)}
-                  disabled={key === 'sust' ? points.sustOffset <= 0 : points[key] <= 0}
+              <Button 
+                onClick={() => handleDecrement(key)}
+                disabled={key === 'sust' ? points.sustOffset <= 0 : points[key] <= 0}
+              >
+                -
+              </Button>
+              {key === 'sust' ? (
+                <TooltipContainer 
+                  onMouseEnter={() => points[key] < 10 && remainingGreenPoints > 0 && setShowTooltip(true)}
+                  onMouseLeave={() => setShowTooltip(false)}
                 >
-                  -
-                </Button>
+                  <Button 
+                    onClick={() => handleIncrement(key)}
+                    disabled={points[key] >= 10 || remainingGreenPoints <= 0}
+                  >
+                    +
+                  </Button>
+                  <Tooltip $show={showTooltip && points[key] < 10 && remainingGreenPoints > 0}>
+                    Sustainable materials and practices can offset your impact, but they come at a premium.
+                  </Tooltip>
+                </TooltipContainer>
+              ) : (
                 <Button 
                   onClick={() => handleIncrement(key)}
                   disabled={
@@ -296,8 +281,9 @@ function HomeBuilder() {
                 >
                   +
                 </Button>
-              </Controls>
-              </ControlRow>
+              )}
+            </Controls>
+          </ControlRow>
           <StatBarContainer>
             <StatBar>
               {[...Array(10)].map((_, i) => (
@@ -403,13 +389,59 @@ const Controls = styled.div`
   gap: 10px;
 `;
 
+const TooltipContainer = styled.div`
+  position: relative;
+  display: inline-block;
+`;
+
+const Tooltip = styled.div`
+  visibility: ${props => props.$show ? 'visible' : 'hidden'};
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px;
+  background: #000;
+  border: 2px solid #fff;
+  color: #fff;
+  font-size: 0.7em;
+  white-space: normal;
+  margin-bottom: 8px;
+  z-index: 1;
+  width: 250px;
+  text-align: center;
+  line-height: 1.4;
+
+  &:after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #fff transparent transparent transparent;
+  }
+`;
+
 const Button = styled.button`
   padding: 5px 10px;
   min-width: 40px;
+  background: ${props => props.children === '+' && !props.disabled ? '#0f0' : 'transparent'};
+  border: 2px solid ${props => props.children === '+' && !props.disabled ? '#0f0' : '#fff'};
+  color: ${props => props.children === '+' && !props.disabled ? '#000' : '#fff'};
   
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    border-color: #666;
+    color: #666;
+    background: transparent;
+  }
+
+  &:hover:not(:disabled) {
+    background: ${props => props.children === '+' && !props.disabled ? '#0f0' : '#333'};
+    color: ${props => props.children === '+' && !props.disabled ? '#000' : '#fff'};
   }
 `;
 

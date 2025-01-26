@@ -22,9 +22,6 @@ export default function Intro() {
         <StartButton onClick={() => navigate('/survey/1')}>
           Start Survey
         </StartButton>
-        <ResetButton onClick={handleReset}>
-          Reset Data
-        </ResetButton>
       </ButtonContainer>
     </IntroContainer>
   );
