@@ -5,12 +5,6 @@ import { useNavigate } from 'react-router-dom';
 export default function Intro() {
   const navigate = useNavigate();
 
-  const handleReset = () => {
-    localStorage.removeItem('survey_session_id');
-    localStorage.removeItem('survey_answers');
-    window.location.reload(); // Reload to reset React state
-  };
-
   return (
     <IntroContainer>
       <Title>Hello!</Title>
@@ -66,19 +60,5 @@ const StartButton = styled.button`
   
   &:hover {
     background: #0f01;
-  }
-`;
-
-const ResetButton = styled.button`
-  padding: 15px 30px;
-  background: transparent;
-  border: 2px solid #f00;
-  color: #f00;
-  font-size: 1.2em;
-  cursor: pointer;
-  font-family: inherit;
-  
-  &:hover {
-    background: #f001;
   }
 `; 

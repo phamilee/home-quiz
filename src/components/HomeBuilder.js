@@ -82,11 +82,11 @@ function HomeBuilder() {
             dur: 0
           };
 
-          const { data: newSurvey, error: insertError } = await supabase
+          const { error: insertError } = await supabase
             .from('survey_responses')
             .insert(initialPoints)
             .select()
-            .maybeSingle();  // Use maybeSingle instead of single
+            .maybeSingle();
             
           if (insertError) {
             throw insertError;
@@ -192,16 +192,13 @@ function HomeBuilder() {
   const handleSubmit = async () => {
     try {
       // Only validate that points are in valid range
-      for (const [key, value] of Object.entries(points)) {
+      for (const [, value] of Object.entries(points)) {
         if (value < 0 || value > 10) {
           return;
         }
       }
 
       const sessionId = getSessionId();
-
-      // Calculate totals
-      const totalGreenUsed = points.size + points.loc + points.vibe + points.dur + points.sustOffset;
       
       // Update with the new values, ensuring field names match database
       const updateData = {
@@ -215,7 +212,7 @@ function HomeBuilder() {
       };
 
       // Try to update first
-      const { data: updateResult, error: updateError } = await supabase
+      const { error: updateError } = await supabase
         .from('survey_responses')
         .update(updateData)
         .eq('session_id', sessionId)

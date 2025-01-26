@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import styled from 'styled-components';
 import * as d3 from 'd3';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrthographicCamera, CameraControls, AdaptiveDpr, AdaptiveEvents } from '@react-three/drei';
+import { OrthographicCamera, AdaptiveDpr, AdaptiveEvents } from '@react-three/drei';
 import { supabase } from '../supabaseClient';
 
 const VARIABLES = {
@@ -11,6 +11,23 @@ const VARIABLES = {
   vibe: { name: 'Vibe' },
   sust: { name: 'Sustainability' },
   dur: { name: 'Durability' }
+};
+
+const FILTER_VARIABLES = {
+  buy_rent: { name: 'Buy vs Rent', values: ['rent', 'buy'] },
+  age_range: { name: 'Age Range', values: ['18-24', '25-34', '35-44', '45-54', '55-64', '65+'] },
+  gender_identity: { name: 'Gender Identity', values: ['Male', 'Female', 'Non-binary'] },
+  profession: { name: 'Profession', values: [
+    'Student',
+    'Healthcare',
+    'Technology',
+    'Education',
+    'Business',
+    'Arts & Entertainment',
+    'Service Industry',
+    'Retired',
+    'Other'
+  ]}
 };
 
 function Scene({ data, xVar, yVar, zVar }) {
@@ -103,12 +120,14 @@ function CameraRig({ mousePosition }) {
 }
 
 export default function Results() {
-  const [rawData, setRawData] = useState([]);
+  const [rawData, setRawData] = useState({ left: [], right: [] });
   const [loading, setLoading] = useState(true);
   const [xVar, setXVar] = useState('size');
   const [yVar, setYVar] = useState('loc');
   const [zVar, setZVar] = useState('vibe');
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [leftFilter, setLeftFilter] = useState('rent');
+  const [rightFilter, setRightFilter] = useState('buy');
   const containerRef = useRef();
 
   const handleMouseMove = (event) => {
@@ -130,21 +149,22 @@ export default function Results() {
       try {
         const { data: surveyData, error } = await supabase
           .from('survey_responses')
-          .select('size, loc, vibe, sust, dur');
+          .select('*');
 
         if (error) throw error;
 
-        const coloredData = surveyData.map(response => {
-          const colorScale = d3.scaleSequential(d3.interpolateViridis)
-            .domain([0, 20]);
-            
-          return {
-            ...response,
-            color: colorScale(response.sust + response.dur)
-          };
-        });
+        const colorScale = d3.scaleSequential(d3.interpolateViridis)
+          .domain([0, 20]);
 
-        setRawData(coloredData);
+        const coloredData = surveyData.map(response => ({
+          ...response,
+          color: colorScale(response.sust + response.dur)
+        }));
+
+        setRawData({
+          left: coloredData.filter(d => d.buy_rent === leftFilter),
+          right: coloredData.filter(d => d.buy_rent === rightFilter)
+        });
         setLoading(false);
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -153,31 +173,67 @@ export default function Results() {
     };
 
     fetchData();
-  }, []);
+  }, [leftFilter, rightFilter]);
 
   if (loading) return <LoadingText>Loading visualization...</LoadingText>;
 
   return (
-    <FullScreenContainer>
-      <VisualizationContainer 
-        ref={containerRef}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={() => setMousePosition({ x: 0, y: 0 })}
-      >
-        <Canvas dpr={[1, 2]}>
-          <CameraRig mousePosition={mousePosition} />
-          <ambientLight intensity={1} />
-          <pointLight position={[10, 10, 10]} intensity={1} />
-          <Scene 
-            data={rawData} 
-            xVar={xVar} 
-            yVar={yVar} 
-            zVar={zVar}
-          />
-          <AdaptiveDpr pixelated />
-          <AdaptiveEvents />
-        </Canvas>
-      </VisualizationContainer>
+    <FullScreenContainer 
+      ref={containerRef}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={() => setMousePosition({ x: 0, y: 0 })}
+    >
+      <VisualizationRow>
+        <VisualizationColumn>
+          <VisualizationTitle>
+            <Select value={leftFilter} onChange={(e) => setLeftFilter(e.target.value)}>
+              {FILTER_VARIABLES.buy_rent.values.map(value => (
+                <option key={value} value={value}>{value}</option>
+              ))}
+            </Select>
+          </VisualizationTitle>
+          <VisualizationContainer>
+            <Canvas dpr={[1, 2]}>
+              <CameraRig mousePosition={mousePosition} />
+              <ambientLight intensity={1} />
+              <pointLight position={[10, 10, 10]} intensity={1} />
+              <Scene 
+                data={rawData.left} 
+                xVar={xVar} 
+                yVar={yVar} 
+                zVar={zVar}
+              />
+              <AdaptiveDpr pixelated />
+              <AdaptiveEvents />
+            </Canvas>
+          </VisualizationContainer>
+        </VisualizationColumn>
+
+        <VisualizationColumn>
+          <VisualizationTitle>
+            <Select value={rightFilter} onChange={(e) => setRightFilter(e.target.value)}>
+              {FILTER_VARIABLES.buy_rent.values.map(value => (
+                <option key={value} value={value}>{value}</option>
+              ))}
+            </Select>
+          </VisualizationTitle>
+          <VisualizationContainer>
+            <Canvas dpr={[1, 2]}>
+              <CameraRig mousePosition={mousePosition} />
+              <ambientLight intensity={1} />
+              <pointLight position={[10, 10, 10]} intensity={1} />
+              <Scene 
+                data={rawData.right} 
+                xVar={xVar} 
+                yVar={yVar} 
+                zVar={zVar}
+              />
+              <AdaptiveDpr pixelated />
+              <AdaptiveEvents />
+            </Canvas>
+          </VisualizationContainer>
+        </VisualizationColumn>
+      </VisualizationRow>
       
       <ControlsContainer>
         <AxisControl>
@@ -220,6 +276,29 @@ const FullScreenContainer = styled.div`
   background: #000;
   display: flex;
   flex-direction: column;
+`;
+
+const VisualizationRow = styled.div`
+  flex: 1;
+  display: flex;
+  gap: 1px;
+  background: #333;
+`;
+
+const VisualizationColumn = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #000;
+`;
+
+const VisualizationTitle = styled.h2`
+  text-align: center;
+  padding: 1rem;
+  margin: 0;
+  color: #0f0;
+  font-size: clamp(1rem, 2vw, 1.5rem);
+  border-bottom: 1px solid #333;
 `;
 
 const VisualizationContainer = styled.div`
@@ -274,4 +353,16 @@ const LoadingText = styled.h2`
   transform: translate(-50%, -50%);
   color: #0f0;
   font-size: clamp(1.2rem, 2.5vw, 1.5rem);
+`;
+
+/* Commenting out FilterContainer styled component
+const FilterContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.9);
+  border-bottom: 1px solid #333;
 `; 
+*/ 
