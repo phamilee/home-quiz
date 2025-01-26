@@ -3,10 +3,19 @@ import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 
+// Get session ID or create one
+const getSessionId = () => {
+  let sessionId = localStorage.getItem('survey_session_id');
+  if (!sessionId) {
+    sessionId = Math.random().toString(36).substring(2, 15);
+    localStorage.setItem('survey_session_id', sessionId);
+  }
+  return sessionId;
+};
+
 export default function Demographics() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [quizId, setQuizId] = useState(null);
   const [answers, setAnswers] = useState({
     age_range: '',
     gender_identity: '',
@@ -16,33 +25,22 @@ export default function Demographics() {
   useEffect(() => {
     const checkPreviousSubmission = async () => {
       try {
-        const ipResponse = await fetch('https://api.ipify.org?format=json');
-        const { ip } = await ipResponse.json();
+        const sessionId = getSessionId();
         
-        let { data: existingData, error } = await supabase
-          .from('quiz_responses')
+        let { data: existingData, error: selectError } = await supabase
+          .from('survey_responses')
           .select()
-          .eq('ip_address', ip)
+          .eq('session_id', sessionId)
           .maybeSingle();
           
-        if (error) throw error;
+        if (selectError) throw selectError;
         
         if (existingData) {
-          setQuizId(existingData.id);
           setAnswers({
             age_range: existingData.age_range || '',
             gender_identity: existingData.gender_identity || '',
             profession: existingData.profession || ''
           });
-        } else {
-          const { data: newQuiz, error: insertError } = await supabase
-            .from('quiz_responses')
-            .insert({ ip_address: ip })
-            .select()
-            .single();
-            
-          if (insertError) throw insertError;
-          setQuizId(newQuiz.id);
         }
         
         setLoading(false);
@@ -61,42 +59,24 @@ export default function Demographics() {
 
   const handleSubmit = async () => {
     try {
+      const sessionId = getSessionId();
       const { error } = await supabase
-        .from('quiz_responses')
+        .from('survey_responses')
         .update(answers)
-        .eq('id', quizId);
+        .eq('session_id', sessionId);
         
       if (error) throw error;
       
-      navigate('/quiz/complete');
+      navigate('/survey/complete');
     } catch (error) {
       console.error('Error saving demographics:', error);
-    }
-  };
-
-  const handleSkip = async () => {
-    try {
-      const { error } = await supabase
-        .from('quiz_responses')
-        .update({
-          age_range: null,
-          gender_identity: null,
-          profession: null
-        })
-        .eq('id', quizId);
-        
-      if (error) throw error;
-      
-      navigate('/quiz/complete');
-    } catch (error) {
-      console.error('Error skipping demographics:', error);
     }
   };
 
   if (loading) return <QuestionText>Loading...</QuestionText>;
 
   return (
-    <QuizContainer>
+    <SurveyContainer>
       <QuestionText>Demographics</QuestionText>
       
       <FormContainer>
@@ -158,18 +138,18 @@ export default function Demographics() {
       </FormContainer>
 
       <ButtonContainer>
-        <BackButton onClick={() => navigate('/quiz/lifespan')}>
+        <BackButton onClick={() => navigate('/survey/5')}>
           Back
         </BackButton>
         <NextButton onClick={handleSubmit}>
-          Complete Quiz
+          Complete Survey
         </NextButton>
       </ButtonContainer>
-    </QuizContainer>
+    </SurveyContainer>
   );
 }
 
-const QuizContainer = styled.div`
+const SurveyContainer = styled.div`
   width: 80%;
   max-width: 600px;
   background: #000;
@@ -237,21 +217,11 @@ const Button = styled.button`
 
 const BackButton = styled(Button)``;
 
-const SkipButton = styled(Button)`
-  border-color: #666;
-  color: #666;
-  
-  &:hover {
-    border-color: #fff;
-    color: #fff;
-  }
-`;
-
 const NextButton = styled(Button)`
-  border-color: #0f0;
-  color: #0f0;
+  background: #fff;
+  color: #000;
   
   &:hover {
-    background: #0f01;
+    background: #ccc;
   }
 `; 

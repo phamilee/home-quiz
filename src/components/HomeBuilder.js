@@ -5,10 +5,10 @@ import { supabase } from '../supabaseClient';
 
 // Get session ID or create one
 const getSessionId = () => {
-  let sessionId = localStorage.getItem('quiz_session_id');
+  let sessionId = localStorage.getItem('survey_session_id');
   if (!sessionId) {
     sessionId = Math.random().toString(36).substring(2, 15);
-    localStorage.setItem('quiz_session_id', sessionId);
+    localStorage.setItem('survey_session_id', sessionId);
   }
   return sessionId;
 };
@@ -24,7 +24,6 @@ const stats = [
 function HomeBuilder() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [quizId, setQuizId] = useState(null);
   const [points, setPoints] = useState({
     size: 0,
     loc: 0,
@@ -33,6 +32,7 @@ function HomeBuilder() {
     sustOffset: 0,  // Green points spent to offset sustainability loss
     dur: 0
   });
+  const [showTooltip, setShowTooltip] = useState(false);
   
   useEffect(() => {
     let mounted = true;
@@ -43,18 +43,26 @@ function HomeBuilder() {
 
         const sessionId = getSessionId();
         
-        // First try to get existing quiz
+        // First try to get existing survey
         let { data: existingData, error: selectError } = await supabase
-          .from('quiz_responses')
+          .from('survey_responses')
           .select()
           .eq('session_id', sessionId)
-          .single();
+          .maybeSingle();  // Use maybeSingle instead of single to avoid errors
+          
+        if (selectError) {
+          console.error('Select error:', {
+            code: selectError.code,
+            message: selectError.message,
+            details: selectError.details,
+            hint: selectError.hint
+          });
+          throw selectError;
+        }
           
         if (!mounted) return;
 
         if (existingData) {
-          console.log('Found existing quiz:', existingData);
-          setQuizId(existingData.id);
           setPoints({
             size: existingData.size || 0,
             loc: existingData.loc || 0,
@@ -64,39 +72,28 @@ function HomeBuilder() {
             dur: existingData.dur || 0
           });
         } else {
-          console.log('Creating new quiz with initial points');
           const initialPoints = {
             session_id: sessionId,
             size: 0,
             loc: 0,
             vibe: 0,
             sust: 10,  // Start at 10
-            sust_offset: 0,  // Match database column name
+            sust_offset: 0,
             dur: 0
           };
 
-          console.log('Inserting initial points:', initialPoints);
-          const { data: newQuiz, error: insertError } = await supabase
-            .from('quiz_responses')
+          const { error: insertError } = await supabase
+            .from('survey_responses')
             .insert(initialPoints)
             .select()
-            .single();
+            .maybeSingle();
             
           if (insertError) {
-            console.error('Insert error:', {
-              code: insertError.code,
-              message: insertError.message,
-              details: insertError.details,
-              hint: insertError.hint,
-              initialPoints
-            });
             throw insertError;
           }
 
           if (!mounted) return;
 
-          console.log('New quiz created:', newQuiz);
-          setQuizId(newQuiz.id);
           setPoints({
             size: 0,
             loc: 0,
@@ -133,7 +130,6 @@ function HomeBuilder() {
   // Track green points (10 total) separately from blue sustainability points
   const totalGreenPoints = points.size + points.loc + points.vibe + points.dur + points.sustOffset;
   const remainingGreenPoints = 10 - totalGreenPoints;
-  const currentSustPoints = points.sust;  // Blue sustainability points
 
   const handleIncrement = (stat) => {
     if (points[stat] < 10) {
@@ -145,7 +141,6 @@ function HomeBuilder() {
             [stat]: points[stat] + 1,
             sust: points.sust - 1  // Decrease blue sustainability points
           };
-          console.log(`Incrementing ${stat}, using 1 green point and decreasing sust by 1:`, newPoints);
           setPoints(newPoints);
         }
       } else if (stat === 'sust') {
@@ -156,14 +151,12 @@ function HomeBuilder() {
             sust: points.sust + 1,  // Increase blue sustainability points
             sustOffset: points.sustOffset + 1  // Count the green point spent
           };
-          console.log(`Offsetting sust loss with 1 green point:`, newPoints);
           setPoints(newPoints);
         }
       } else {
         // Other stats just use green points
         if (remainingGreenPoints > 0) {
           const newPoints = { ...points, [stat]: points[stat] + 1 };
-          console.log(`Incrementing ${stat}, using 1 green point:`, newPoints);
           setPoints(newPoints);
         }
       }
@@ -179,21 +172,18 @@ function HomeBuilder() {
           [stat]: points[stat] - 1,
           sust: points.sust + 1  // Return blue sustainability point
         };
-        console.log(`Decrementing ${stat}, returning 1 green point and 1 sust:`, newPoints);
         setPoints(newPoints);
       } else if (stat === 'sust' && points.sustOffset > 0) {
-        // Return green point used for sustainability offset
+        // Only remove offset points for sustainability
         const newPoints = {
           ...points,
           sust: points.sust - 1,
           sustOffset: points.sustOffset - 1
         };
-        console.log(`Removing sust offset, returning 1 green point:`, newPoints);
         setPoints(newPoints);
       } else {
         // Other stats just return green points
         const newPoints = { ...points, [stat]: points[stat] - 1 };
-        console.log(`Decrementing ${stat}, returning 1 green point:`, newPoints);
         setPoints(newPoints);
       }
     }
@@ -202,57 +192,39 @@ function HomeBuilder() {
   const handleSubmit = async () => {
     try {
       // Only validate that points are in valid range
-      for (const [key, value] of Object.entries(points)) {
+      for (const [, value] of Object.entries(points)) {
         if (value < 0 || value > 10) {
-          console.error(`Invalid value for ${key}:`, value);
           return;
         }
       }
 
       const sessionId = getSessionId();
-
-      // Calculate totals
-      const totalGreenUsed = points.size + points.loc + points.vibe + points.dur + points.sustOffset;
       
-      // Update with the new values
+      // Update with the new values, ensuring field names match database
       const updateData = {
-        session_id: sessionId,
+        session_id: sessionId,  // Include session_id in update
         size: points.size,
         loc: points.loc,
         vibe: points.vibe,
         sust: points.sust,
-        sust_offset: points.sustOffset,
+        sust_offset: points.sustOffset,  // Match the database field name
         dur: points.dur
       };
 
-      console.log('Current state:', {
-        points,
-        totalGreenUsed,
-        updateData,
-        sessionId
-      });
-
-      // Update using session_id
-      const { data, error } = await supabase
-        .from('quiz_responses')
+      // Try to update first
+      const { error: updateError } = await supabase
+        .from('survey_responses')
         .update(updateData)
         .eq('session_id', sessionId)
         .select();
 
-      if (error) {
-        console.error('Error updating record:', {
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          sessionId
-        });
-        throw error;
+      if (updateError) {
+        throw updateError;
       }
 
-      console.log('Update successful:', data);
-      navigate('/quiz/4');
+      navigate('/survey/5');
     } catch (error) {
+      // Keep this error log for debugging purposes
       console.error('Error saving points:', error);
     }
   };
@@ -262,8 +234,11 @@ function HomeBuilder() {
   return (
     <BuilderContainer>
       <QuestionText>Build your ideal home:</QuestionText>
+      <QuestionSubtext>
+        Use your credits to set your perfect home's priorities.
+      </QuestionSubtext>
       <RemainingPoints>
-        Points Remaining: {remainingGreenPoints}
+        Credits Remaining: {remainingGreenPoints}
       </RemainingPoints>
       
       {stats.map(({ name, key }) => (
@@ -271,7 +246,28 @@ function HomeBuilder() {
           <ControlRow>
             <StatName>{name}</StatName>
             <Controls>
-                <Button onClick={() => handleDecrement(key)}>-</Button>
+              <Button 
+                onClick={() => handleDecrement(key)}
+                disabled={key === 'sust' ? points.sustOffset <= 0 : points[key] <= 0}
+              >
+                -
+              </Button>
+              {key === 'sust' ? (
+                <TooltipContainer 
+                  onMouseEnter={() => points[key] < 10 && remainingGreenPoints > 0 && setShowTooltip(true)}
+                  onMouseLeave={() => setShowTooltip(false)}
+                >
+                  <Button 
+                    onClick={() => handleIncrement(key)}
+                    disabled={points[key] >= 10 || remainingGreenPoints <= 0}
+                  >
+                    +
+                  </Button>
+                  <Tooltip $show={showTooltip && points[key] < 10 && remainingGreenPoints > 0}>
+                    Sustainable materials and practices can offset your impact, but they come at a premium.
+                  </Tooltip>
+                </TooltipContainer>
+              ) : (
                 <Button 
                   onClick={() => handleIncrement(key)}
                   disabled={
@@ -282,8 +278,9 @@ function HomeBuilder() {
                 >
                   +
                 </Button>
-              </Controls>
-              </ControlRow>
+              )}
+            </Controls>
+          </ControlRow>
           <StatBarContainer>
             <StatBar>
               {[...Array(10)].map((_, i) => (
@@ -298,7 +295,7 @@ function HomeBuilder() {
       ))}
       
       <NavigationContainer>
-        <BackButton onClick={() => navigate('/quiz/disasters')}>
+        <BackButton onClick={() => navigate('/survey/disasters')}>
           Back
         </BackButton>
         <SubmitButton 
@@ -322,6 +319,12 @@ const BuilderContainer = styled.div`
 
 const QuestionText = styled.h2`
   margin-bottom: 15px;
+  line-height: 1.5;
+  text-align: center;
+`;
+
+const QuestionSubtext = styled.p`
+  margin-bottom: 20px;
   line-height: 1.5;
   text-align: center;
 `;
@@ -383,18 +386,59 @@ const Controls = styled.div`
   gap: 10px;
 `;
 
-const StatValue = styled.span`
-  min-width: 30px;
+const TooltipContainer = styled.div`
+  position: relative;
+  display: inline-block;
+`;
+
+const Tooltip = styled.div`
+  visibility: ${props => props.$show ? 'visible' : 'hidden'};
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px;
+  background: #000;
+  border: 2px solid #fff;
+  color: #fff;
+  font-size: 0.7em;
+  white-space: normal;
+  margin-bottom: 8px;
+  z-index: 1;
+  width: 250px;
   text-align: center;
+  line-height: 1.4;
+
+  &:after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #fff transparent transparent transparent;
+  }
 `;
 
 const Button = styled.button`
   padding: 5px 10px;
   min-width: 40px;
+  background: ${props => props.children === '+' && !props.disabled ? '#0f0' : 'transparent'};
+  border: 2px solid ${props => props.children === '+' && !props.disabled ? '#0f0' : '#fff'};
+  color: ${props => props.children === '+' && !props.disabled ? '#000' : '#fff'};
   
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    border-color: #666;
+    color: #666;
+    background: transparent;
+  }
+
+  &:hover:not(:disabled) {
+    background: ${props => props.children === '+' && !props.disabled ? '#0f0' : '#333'};
+    color: ${props => props.children === '+' && !props.disabled ? '#000' : '#fff'};
   }
 `;
 

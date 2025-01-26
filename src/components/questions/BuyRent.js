@@ -4,10 +4,10 @@ import BaseQuestion from './BaseQuestion';
 export default function BuyRent() {
   return (
     <BaseQuestion
-      question="For your next home, will you be buying or renting?"
-      options={["buy", "rent"]}
+      question="For your next home, will you be renting or buying?"
+      options={["rent", "buy"]}
       field="buy_rent"
-      nextPath="/quiz/disasters"
+      nextPath="/survey/2"
     />
   );
 } 
