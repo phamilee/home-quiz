@@ -10,6 +10,7 @@ import Lifespan from './components/questions/Lifespan';
 import Demographics from './components/questions/Demographics';
 import Intro from './components/Intro';
 import ThankYou from './components/ThankYou';
+import Results from './components/Results';
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
             <Route path="/survey/4" element={<HomeBuilder />} />
             <Route path="/survey/5" element={<Lifespan />} />
             <Route path="/survey/6" element={<Demographics />} />
+            <Route path="/quiz/results" element={<Results />} />
             <Route path="*" element={<Navigate to="/survey" replace />} />
           </Routes>
         </AppContainer>

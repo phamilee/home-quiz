@@ -12,6 +12,11 @@ export default function ThankYou() {
         Your responses have been recorded. Thank you for contributing to our research
         on sustainable housing solutions.
       </Description>
+      <ButtonContainer>
+        <ViewResultsButton onClick={() => navigate('/quiz/results')}>
+          View Results
+        </ViewResultsButton>
+      </ButtonContainer>
     </ThankYouContainer>
   );
 }
@@ -45,16 +50,16 @@ const ButtonContainer = styled.div`
   margin-top: 20px;
 `;
 
-const RestartButton = styled.button`
+const ViewResultsButton = styled.button`
   padding: 12px 24px;
-  background: transparent;
-  border: 2px solid #fff;
-  color: #fff;
+  background: #0f0;
+  border: none;
+  color: #000;
   font-size: 1.1em;
   cursor: pointer;
   font-family: inherit;
   
   &:hover {
-    background: #333;
+    background: #0d0;
   }
 `; 
