@@ -235,38 +235,50 @@ function HomeBuilder() {
           <ControlRow>
             <StatName>{name}</StatName>
             <Controls>
-              <Button 
-                onClick={() => handleDecrement(key)}
-                disabled={key === 'sust' ? points.sustOffset <= 0 : points[key] <= 0}
-              >
-                -
-              </Button>
               {key === 'sust' ? (
-                <TooltipContainer 
-                  onMouseEnter={() => points[key] < 5 && remainingGreenPoints > 0 && setShowTooltip(true)}
-                  onMouseLeave={() => setShowTooltip(false)}
-                >
+                <>
                   <Button 
-                    onClick={() => handleIncrement(key)}
-                    disabled={points[key] >= 5 || remainingGreenPoints <= 0}
+                    onClick={() => handleDecrement(key)}
+                    disabled={key === 'sust' ? points.sustOffset <= 0 : points[key] <= 0}
                   >
                     +
                   </Button>
-                  <Tooltip $show={showTooltip && points[key] < 5 && remainingGreenPoints > 0}>
-                    Sustainable materials and practices can offset your impact, but they come at a premium.
-                  </Tooltip>
-                </TooltipContainer>
+                  <TooltipContainer 
+                    onMouseEnter={() => points[key] < 5 && remainingGreenPoints > 0 && setShowTooltip(true)}
+                    onMouseLeave={() => setShowTooltip(false)}
+                  >
+                    <Button 
+                      onClick={() => handleIncrement(key)}
+                      disabled={points[key] >= 5 || remainingGreenPoints <= 0}
+                      $isIncrement={true}
+                    >
+                      -
+                    </Button>
+                    <Tooltip $show={showTooltip && points[key] < 5 && remainingGreenPoints > 0}>
+                      Sustainable materials and practices can offset your impact, but they come at a premium.
+                    </Tooltip>
+                  </TooltipContainer>
+                </>
               ) : (
-                <Button 
-                  onClick={() => handleIncrement(key)}
-                  disabled={
-                    points[key] >= 5 || 
-                    remainingGreenPoints <= 0 ||
-                    ((key === 'size' || key === 'dur') && points.sust <= 0)
-                  }
-                >
-                  +
-                </Button>
+                <>
+                  <Button 
+                    onClick={() => handleDecrement(key)}
+                    disabled={key === 'sust' ? points.sustOffset <= 0 : points[key] <= 0}
+                  >
+                    -
+                  </Button>
+                  <Button 
+                    onClick={() => handleIncrement(key)}
+                    disabled={
+                      points[key] >= 5 || 
+                      remainingGreenPoints <= 0 ||
+                      ((key === 'size' || key === 'dur') && points.sust <= 0)
+                    }
+                    $isIncrement={true}
+                  >
+                    +
+                  </Button>
+                </>
               )}
             </Controls>
           </ControlRow>
@@ -436,9 +448,9 @@ const Tooltip = styled.div`
 const Button = styled.button`
   padding: 5px 10px;
   min-width: 40px;
-  background: ${props => props.children === '+' && !props.disabled ? '#0f0' : 'transparent'};
-  border: 2px solid ${props => props.children === '+' && !props.disabled ? '#0f0' : '#fff'};
-  color: ${props => props.children === '+' && !props.disabled ? '#000' : '#fff'};
+  background: ${props => props.$isIncrement && !props.disabled ? '#0f0' : 'transparent'};
+  border: 2px solid ${props => props.$isIncrement && !props.disabled ? '#0f0' : '#fff'};
+  color: ${props => props.$isIncrement && !props.disabled ? '#000' : '#fff'};
   
   @media (max-width: 768px) {
     padding: 4px 8px;
@@ -446,8 +458,8 @@ const Button = styled.button`
   }
   
   &:hover:not(:disabled) {
-    background: ${props => props.children === '+' && !props.disabled ? '#0f0' : '#333'};
-    color: ${props => props.children === '+' && !props.disabled ? '#000' : '#fff'};
+    background: ${props => props.$isIncrement && !props.disabled ? '#0d0' : '#333'};
+    color: ${props => props.$isIncrement && !props.disabled ? '#000' : '#fff'};
   }
 `;
 
