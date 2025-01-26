@@ -6,9 +6,10 @@ export default function Lifespan() {
     <BaseQuestion
       question="How long do you expect the building to last?"
       options={[
-        "5-25 years",
-        "26-50 years",
-        "51-100 years",
+        "5-15 years",
+        "16-35 years",
+        "36-75 years",
+        "76-100 years",
         "100+ years"
       ]}
       field="lifespan"
