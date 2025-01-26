@@ -12,11 +12,11 @@ export default function ThankYou() {
         Your responses have been recorded. Thank you for contributing to our research
         on sustainable housing solutions.
       </Description>
-      <ButtonContainer>
+      {/* <ButtonContainer>
         <ViewResultsButton onClick={() => navigate('/quiz/results')}>
           View Results
         </ViewResultsButton>
-      </ButtonContainer>
+      </ButtonContainer> */}
     </ThankYouContainer>
   );
 }

@@ -13,25 +13,27 @@ const getSessionId = () => {
   return sessionId;
 };
 
+const INITIAL_POINTS = {
+  size: 0,
+  loc: 0,
+  vibe: 0,
+  sust: 5,  // Always start at 5
+  sustOffset: 0,
+  dur: 0
+};
+
 const stats = [
   { name: 'Size', key: 'size' },
   { name: 'Location', key: 'loc' },
   { name: 'Vibe', key: 'vibe' },
-  { name: 'Sustainability', key: 'sust' },
+  { name: 'Impact (Environmental)', key: 'sust' },
   { name: 'Durability', key: 'dur' }
 ];
 
 function HomeBuilder() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [points, setPoints] = useState({
-    size: 0,
-    loc: 0,
-    vibe: 0,
-    sust: 10,  // Blue sustainability points (start at 10)
-    sustOffset: 0,  // Green points spent to offset sustainability loss
-    dur: 0
-  });
+  const [points, setPoints] = useState(INITIAL_POINTS);
   const [showTooltip, setShowTooltip] = useState(false);
   
   useEffect(() => {
@@ -67,19 +69,14 @@ function HomeBuilder() {
             size: existingData.size || 0,
             loc: existingData.loc || 0,
             vibe: existingData.vibe || 0,
-            sust: 10,  // Always start at 10
-            sustOffset: existingData.sust_offset || 0,  // Match database column name
+            sust: 5,  // Always start at 5
+            sustOffset: existingData.sust_offset || 0,
             dur: existingData.dur || 0
           });
         } else {
           const initialPoints = {
             session_id: sessionId,
-            size: 0,
-            loc: 0,
-            vibe: 0,
-            sust: 10,  // Start at 10
-            sust_offset: 0,
-            dur: 0
+            ...INITIAL_POINTS
           };
 
           const { error: insertError } = await supabase
@@ -93,15 +90,7 @@ function HomeBuilder() {
           }
 
           if (!mounted) return;
-
-          setPoints({
-            size: 0,
-            loc: 0,
-            vibe: 0,
-            sust: 10,  // Always start at 10
-            sustOffset: 0,
-            dur: 0
-          });
+          setPoints(INITIAL_POINTS);
         }
         
         if (mounted) {
@@ -127,28 +116,28 @@ function HomeBuilder() {
     };
   }, []);
   
-  // Track green points (10 total) separately from blue sustainability points
+  // Track green points (10 total) separately from blue impact points
   const totalGreenPoints = points.size + points.loc + points.vibe + points.dur + points.sustOffset;
   const remainingGreenPoints = 10 - totalGreenPoints;
 
   const handleIncrement = (stat) => {
-    if (points[stat] < 10) {
+    if (points[stat] < 5) {
       if (stat === 'size' || stat === 'dur') {
-        // Size and durability decrease sustainability (blue) points
+        // Size and durability decrease impact (blue) points
         if (remainingGreenPoints > 0 && points.sust > 0) {
           const newPoints = {
             ...points,
             [stat]: points[stat] + 1,
-            sust: points.sust - 1  // Decrease blue sustainability points
+            sust: points.sust - 1
           };
           setPoints(newPoints);
         }
       } else if (stat === 'sust') {
-        // Can spend green points to offset sustainability loss
+        // Can spend green points to offset impact loss
         if (remainingGreenPoints > 0) {
           const newPoints = {
             ...points,
-            sust: points.sust + 1,  // Increase blue sustainability points
+            sust: points.sust + 1,  // Increase blue impact points
             sustOffset: points.sustOffset + 1  // Count the green point spent
           };
           setPoints(newPoints);
@@ -166,15 +155,15 @@ function HomeBuilder() {
   const handleDecrement = (stat) => {
     if (points[stat] > 0) {
       if (stat === 'size' || stat === 'dur') {
-        // Size and durability return both green point and blue sustainability
+        // Size and durability return both green point and blue impact
         const newPoints = {
           ...points,
           [stat]: points[stat] - 1,
-          sust: points.sust + 1  // Return blue sustainability point
+          sust: points.sust + 1  // Return 1 blue impact point
         };
         setPoints(newPoints);
       } else if (stat === 'sust' && points.sustOffset > 0) {
-        // Only remove offset points for sustainability
+        // Only remove offset points for impact
         const newPoints = {
           ...points,
           sust: points.sust - 1,
@@ -193,7 +182,7 @@ function HomeBuilder() {
     try {
       // Only validate that points are in valid range
       for (const [, value] of Object.entries(points)) {
-        if (value < 0 || value > 10) {
+        if (value < 0 || value > 5) {
           return;
         }
       }
@@ -233,9 +222,9 @@ function HomeBuilder() {
 
   return (
     <BuilderContainer>
-      <QuestionText>Build your ideal home:</QuestionText>
+      <QuestionText>Spec your home:</QuestionText>
       <QuestionSubtext>
-        Use your credits to set your perfect home's priorities.
+        Use the available credits to set your next home's priorities.
       </QuestionSubtext>
       <RemainingPoints>
         Credits Remaining: {remainingGreenPoints}
@@ -254,16 +243,16 @@ function HomeBuilder() {
               </Button>
               {key === 'sust' ? (
                 <TooltipContainer 
-                  onMouseEnter={() => points[key] < 10 && remainingGreenPoints > 0 && setShowTooltip(true)}
+                  onMouseEnter={() => points[key] < 5 && remainingGreenPoints > 0 && setShowTooltip(true)}
                   onMouseLeave={() => setShowTooltip(false)}
                 >
                   <Button 
                     onClick={() => handleIncrement(key)}
-                    disabled={points[key] >= 10 || remainingGreenPoints <= 0}
+                    disabled={points[key] >= 5 || remainingGreenPoints <= 0}
                   >
                     +
                   </Button>
-                  <Tooltip $show={showTooltip && points[key] < 10 && remainingGreenPoints > 0}>
+                  <Tooltip $show={showTooltip && points[key] < 5 && remainingGreenPoints > 0}>
                     Sustainable materials and practices can offset your impact, but they come at a premium.
                   </Tooltip>
                 </TooltipContainer>
@@ -271,7 +260,7 @@ function HomeBuilder() {
                 <Button 
                   onClick={() => handleIncrement(key)}
                   disabled={
-                    points[key] >= 10 || 
+                    points[key] >= 5 || 
                     remainingGreenPoints <= 0 ||
                     ((key === 'size' || key === 'dur') && points.sust <= 0)
                   }
@@ -283,10 +272,11 @@ function HomeBuilder() {
           </ControlRow>
           <StatBarContainer>
             <StatBar>
-              {[...Array(10)].map((_, i) => (
+              {[...Array(5)].map((_, i) => (
                 <Segment 
                   key={i} 
                   $filled={i < points[key]}
+                  $stat={key}
                 />
               ))}
             </StatBar>
@@ -347,6 +337,7 @@ const ControlRow = styled.div`
 const StatName = styled.span`
   text-align: left;
   min-width: 120px;
+  line-height: 1.3;
   
   @media (max-width: 768px) {
     min-width: 100px;
@@ -369,8 +360,18 @@ const StatBar = styled.div`
 
 const Segment = styled.div`
   flex: 1;
-  background: ${props => props.$filled ? '#0f0' : '#333'};
-  border: 2px solid ${props => props.$filled ? '#0f0' : '#666'};
+  background: ${props => {
+    if (props.$stat === 'sust') {
+      return props.$filled ? '#333' : '#f00';
+    }
+    return props.$filled ? '#0f0' : '#333';
+  }};
+  border: 2px solid ${props => {
+    if (props.$stat === 'sust') {
+      return props.$filled ? '#666' : '#f00';
+    }
+    return props.$filled ? '#0f0' : '#666';
+  }};
   image-rendering: pixelated;
 `;
 
@@ -408,6 +409,10 @@ const Tooltip = styled.div`
     font-size: 0.6em;
     width: 200px;
     padding: 6px;
+    left: auto;
+    right: 0;
+    transform: none;
+    margin-right: -10px;
   }
 
   &:after {
@@ -419,6 +424,12 @@ const Tooltip = styled.div`
     border-width: 5px;
     border-style: solid;
     border-color: #fff transparent transparent transparent;
+
+    @media (max-width: 768px) {
+      left: auto;
+      right: 15px;
+      margin-left: 0;
+    }
   }
 `;
 

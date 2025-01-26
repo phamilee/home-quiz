@@ -9,7 +9,7 @@ export default function Intro() {
     <IntroContainer>
       <Title>Hello!</Title>
       <Description>
-        The following brief survey contributes to research on sustainable housing solutions.
+        The following survey is a rough tool to approximate housing priorities.
         The entire survey should take less than 3 minutes. <br /><br /> Your response is anonymous.
       </Description>
       <ButtonContainer>

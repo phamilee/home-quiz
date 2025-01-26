@@ -21,7 +21,7 @@ export const GlobalStyle = createGlobalStyle`
     
     @media (max-width: 768px) {
       font-size: 1.2rem;
-      margin-bottom: 20px;
+      margin-bottom: 0;
     }
   }
 
