@@ -309,30 +309,17 @@ function HomeBuilder() {
   );
 }
 
-const BuilderContainer = styled.div`
-  width: 80%;
-  max-width: 600px;
-  background: #000;
-  border: 4px solid #fff;
-  padding: 20px;
-`;
+const BuilderContainer = styled.div.attrs({ className: 'question-container' })``;
 
-const QuestionText = styled.h2`
-  margin-bottom: 15px;
-  line-height: 1.5;
-  text-align: center;
-`;
+const QuestionText = styled.h2``;
 
 const QuestionSubtext = styled.p`
   margin-bottom: 20px;
-  line-height: 1.5;
-  text-align: center;
 `;
 
-const RemainingPoints = styled.div`
+const RemainingPoints = styled.p`
   margin-bottom: 20px;
   color: #0f0;
-  text-align: center;
 `;
 
 const StatRow = styled.div`
@@ -343,6 +330,10 @@ const StatRow = styled.div`
   margin: 10px 0;
   padding: 10px;
   border: 2px solid #fff;
+  
+  @media (max-width: 768px) {
+    padding: 8px;
+  }
 `;
 
 const ControlRow = styled.div`
@@ -356,6 +347,10 @@ const ControlRow = styled.div`
 const StatName = styled.span`
   text-align: left;
   min-width: 120px;
+  
+  @media (max-width: 768px) {
+    min-width: 100px;
+  }
 `;
 
 const StatBarContainer = styled.div`
@@ -408,6 +403,12 @@ const Tooltip = styled.div`
   width: 250px;
   text-align: center;
   line-height: 1.4;
+  
+  @media (max-width: 768px) {
+    font-size: 0.6em;
+    width: 200px;
+    padding: 6px;
+  }
 
   &:after {
     content: '';
@@ -428,14 +429,11 @@ const Button = styled.button`
   border: 2px solid ${props => props.children === '+' && !props.disabled ? '#0f0' : '#fff'};
   color: ${props => props.children === '+' && !props.disabled ? '#000' : '#fff'};
   
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    border-color: #666;
-    color: #666;
-    background: transparent;
+  @media (max-width: 768px) {
+    padding: 4px 8px;
+    min-width: 32px;
   }
-
+  
   &:hover:not(:disabled) {
     background: ${props => props.children === '+' && !props.disabled ? '#0f0' : '#333'};
     color: ${props => props.children === '+' && !props.disabled ? '#000' : '#fff'};
@@ -449,35 +447,8 @@ const NavigationContainer = styled.div`
   margin-top: 20px;
 `;
 
-const BackButton = styled.button`
-  padding: 8px 16px;
-  background: transparent;
-  border: 2px solid #fff;
-  color: #fff;
-  cursor: pointer;
-  
-  &:hover {
-    background: #333;
-  }
-`;
+const BackButton = styled.button.attrs({ className: 'back-button' })``;
 
-const SubmitButton = styled.button`
-  padding: 8px 16px;
-  background: transparent;
-  border: 2px solid #0f0;
-  color: #0f0;
-  cursor: pointer;
-  
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    border-color: #666;
-    color: #666;
-  }
-  
-  &:hover:not(:disabled) {
-    background: #0f01;
-  }
-`;
+const SubmitButton = styled.button.attrs({ className: 'submit-button' })``;
 
 export default HomeBuilder;

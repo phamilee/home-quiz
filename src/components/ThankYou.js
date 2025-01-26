@@ -22,7 +22,7 @@ export default function ThankYou() {
 }
 
 const ThankYouContainer = styled.div`
-  width: 80%;
+  width: 95%;
   max-width: 600px;
   background: #000;
   border: 4px solid #fff;
