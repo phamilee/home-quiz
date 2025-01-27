@@ -74,14 +74,14 @@ function HomeBuilder() {
             size: existingData.size || 0,
             loc: existingData.loc || 0,
             vibe: existingData.vibe || 0,
-            sust: existingData.sust,  // Use existing value without default
+            sust: 5,  // Always start at 5
             sust_offset: existingData.sust_offset || 0,
             dur: existingData.dur || 0
           });
         } else {
           const initialPoints = {
             session_id: sessionId,
-            ...INITIAL_POINTS  // Only use 5 for new entries
+            ...INITIAL_POINTS
           };
 
           const { error: insertError } = await supabase
