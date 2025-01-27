@@ -186,7 +186,7 @@ function HomeBuilder() {
   const handleSubmit = async () => {
     try {
       // Only validate that points are in valid range
-      for (const [key, value] of Object.entries(points)) {
+      for (const [, value] of Object.entries(points)) {
         if (value < 0 || value > 5) {
           return;
         }
