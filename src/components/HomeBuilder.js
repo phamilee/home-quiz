@@ -70,13 +70,17 @@ function HomeBuilder() {
         if (!mounted) return;
 
         if (existingData) {
+          const size = existingData.size || 0;
+          const dur = existingData.dur || 0;
+          const sust_offset = existingData.sust_offset || 0;
+          
           setPoints({
-            size: existingData.size || 0,
+            size: size,
             loc: existingData.loc || 0,
             vibe: existingData.vibe || 0,
-            sust: 5,  // Always start at 5
-            sust_offset: existingData.sust_offset || 0,
-            dur: existingData.dur || 0
+            sust: 5 - (size + dur) + sust_offset,  // Calculate impact based on size, durability and offset
+            sust_offset: sust_offset,
+            dur: dur
           });
         } else {
           const initialPoints = {
