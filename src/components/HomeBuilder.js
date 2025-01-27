@@ -5,20 +5,25 @@ import { supabase } from '../supabaseClient';
 
 // Get session ID or create one
 const getSessionId = () => {
-  let sessionId = localStorage.getItem('survey_session_id');
-  if (!sessionId) {
-    sessionId = Math.random().toString(36).substring(2, 15);
-    localStorage.setItem('survey_session_id', sessionId);
+  try {
+    let sessionId = localStorage.getItem('survey_session_id');
+    if (!sessionId) {
+      sessionId = Math.random().toString(36).substring(2, 15);
+      localStorage.setItem('survey_session_id', sessionId);
+    }
+    return sessionId;
+  } catch (error) {
+    // If localStorage is not available, generate a temporary session ID
+    return Math.random().toString(36).substring(2, 15);
   }
-  return sessionId;
 };
 
 const INITIAL_POINTS = {
   size: 0,
   loc: 0,
   vibe: 0,
-  sust: 5,  // Always start at 5
-  sustOffset: 0,
+  sust: 5,  // Start at 5 only for new surveys
+  sust_offset: 0,  // Match database column name
   dur: 0
 };
 
@@ -69,8 +74,8 @@ function HomeBuilder() {
             size: existingData.size || 0,
             loc: existingData.loc || 0,
             vibe: existingData.vibe || 0,
-            sust: 5,  // Always start at 5
-            sustOffset: existingData.sust_offset || 0,
+            sust: existingData.sust || 5,
+            sust_offset: existingData.sust_offset || 0,  // Match database column name
             dur: existingData.dur || 0
           });
         } else {
@@ -117,7 +122,7 @@ function HomeBuilder() {
   }, []);
   
   // Track green points (10 total) separately from blue impact points
-  const totalGreenPoints = points.size + points.loc + points.vibe + points.dur + points.sustOffset;
+  const totalGreenPoints = points.size + points.loc + points.vibe + points.dur + points.sust_offset;  // Match database column name
   const remainingGreenPoints = 10 - totalGreenPoints;
 
   const handleIncrement = (stat) => {
@@ -138,7 +143,7 @@ function HomeBuilder() {
           const newPoints = {
             ...points,
             sust: points.sust + 1,  // Increase blue impact points
-            sustOffset: points.sustOffset + 1  // Count the green point spent
+            sust_offset: points.sust_offset + 1  // Match database column name
           };
           setPoints(newPoints);
         }
@@ -162,12 +167,12 @@ function HomeBuilder() {
           sust: points.sust + 1  // Return 1 blue impact point
         };
         setPoints(newPoints);
-      } else if (stat === 'sust' && points.sustOffset > 0) {
+      } else if (stat === 'sust' && points.sust_offset > 0) {  // Match database column name
         // Only remove offset points for impact
         const newPoints = {
           ...points,
           sust: points.sust - 1,
-          sustOffset: points.sustOffset - 1
+          sust_offset: points.sust_offset - 1  // Match database column name
         };
         setPoints(newPoints);
       } else {
@@ -181,7 +186,7 @@ function HomeBuilder() {
   const handleSubmit = async () => {
     try {
       // Only validate that points are in valid range
-      for (const [, value] of Object.entries(points)) {
+      for (const [key, value] of Object.entries(points)) {
         if (value < 0 || value > 5) {
           return;
         }
@@ -191,12 +196,12 @@ function HomeBuilder() {
       
       // Update with the new values, ensuring field names match database
       const updateData = {
-        session_id: sessionId,  // Include session_id in update
+        session_id: sessionId,
         size: points.size,
         loc: points.loc,
         vibe: points.vibe,
         sust: points.sust,
-        sust_offset: points.sustOffset,  // Match the database field name
+        sust_offset: points.sust_offset,  // Match database column name
         dur: points.dur
       };
 
@@ -213,7 +218,6 @@ function HomeBuilder() {
 
       navigate('/survey/5');
     } catch (error) {
-      // Keep this error log for debugging purposes
       console.error('Error saving points:', error);
     }
   };
@@ -239,7 +243,7 @@ function HomeBuilder() {
                 <>
                   <Button 
                     onClick={() => handleDecrement(key)}
-                    disabled={key === 'sust' ? points.sustOffset <= 0 : points[key] <= 0}
+                    disabled={key === 'sust' ? points.sust_offset <= 0 : points[key] <= 0}
                   >
                     +
                   </Button>
@@ -263,7 +267,7 @@ function HomeBuilder() {
                 <>
                   <Button 
                     onClick={() => handleDecrement(key)}
-                    disabled={key === 'sust' ? points.sustOffset <= 0 : points[key] <= 0}
+                    disabled={key === 'sust' ? points.sust_offset <= 0 : points[key] <= 0}
                   >
                     -
                   </Button>
