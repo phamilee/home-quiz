@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import styled from 'styled-components';
-import * as d3 from 'd3';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrthographicCamera, AdaptiveDpr, AdaptiveEvents } from '@react-three/drei';
 import { supabase } from '../supabaseClient';
@@ -153,17 +152,15 @@ export default function Results() {
 
         if (error) throw error;
 
-        const colorScale = d3.scaleSequential(d3.interpolateViridis)
-          .domain([0, 20]);
-
-        const coloredData = surveyData.map(response => ({
+        // Remove color scaling and set all points to white
+        const processedData = surveyData.map(response => ({
           ...response,
-          color: colorScale(response.sust + response.dur)
+          color: '#ffffff'
         }));
 
         setRawData({
-          left: coloredData.filter(d => d.buy_rent === leftFilter),
-          right: coloredData.filter(d => d.buy_rent === rightFilter)
+          left: processedData.filter(d => d.buy_rent === leftFilter),
+          right: processedData.filter(d => d.buy_rent === rightFilter)
         });
         setLoading(false);
       } catch (error) {
